@@ -1,0 +1,121 @@
+<html>
+
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+</head>
+
+<body ng-app="myApp">
+
+    <div ng-controller="myCtrl">
+        <div>
+            <input type="file" file-model="myFile" />
+            <button ng-click="uploadFile()">upload me</button>
+        </div>
+        <br/>
+        <div>
+            <table>
+                    <tr>
+                        <td>
+                            <label>Size: </label>
+                        </td>
+                        <td>
+                            <input type="number" ng-model="fileSize" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label>Quality: </label>
+                        </td>
+                        <td>
+                            <input type="number" ng-model="fileQuality" />
+                        </td>
+                    </tr>
+                </table>
+        </div>
+        <div ng-if="fileList.length">
+            <h2 style="margin-bottom: 0px;">List Of File:</h2>
+            <ul style="margin-top: 3px; padding-left: 23px;">
+                <li ng-repeat="file in fileList">
+                    <a href="#" ng-click="getFile(file.data)">{{file.caption}}</a>
+                </li>
+            </ui>
+        </div>
+        <a id="downloadFile" href="{{filePath}}" target="_blank"></a>
+    </div>
+
+
+    <script>
+        var myApp = angular.module('myApp', []);
+
+        myApp.directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            modelSetter(scope, element[0].files[0]);
+                        });
+                    });
+                }
+            };
+        }]);
+
+
+
+        myApp.controller('myCtrl', ['$scope', '$http', function ($scope, $http) {
+            var uploadUrl = "/fileUpload";
+            var getFile = "/file";
+            $scope.fileList = [];
+            $scope.getFile = function (fileName) {
+                var obj = {
+                    'fileSize': Math.abs(parseInt($scope.fileSize)),
+                    'fileQuality': Math.abs(parseInt($scope.fileQuality)),
+                    'fileName': fileName
+                }
+                $http.post(getFile, obj).success(function (responce) {
+                    $scope.filePath = responce;
+                    setTimeout(function () {
+                        document.getElementById('downloadFile').click();
+                    }, 500)
+                }).error(function (err) {
+                    console.log(err);
+                });
+
+            }
+
+            $scope.uploadFile = function () {
+                var file = $scope.myFile;
+                var fd = new FormData();
+                fd.append('file', file);
+                $http.post(uploadUrl, fd, {
+                    transformRequest: angular.identity,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }).success(function (responce) {
+                    getList(uploadUrl);
+                }).error(function (err) {
+
+                });
+            };
+
+            function getList(uploadUrl) {
+                $http.get(uploadUrl).success(function (responce) {
+                    responce.data.forEach(function (res){
+	                    res.caption = res.data.substring(14, res.data.length);
+                    });
+                    $scope.fileList = responce.data;
+                }).error(function (err) {
+
+                });
+            }
+            getList(uploadUrl);
+        }]);
+    </script>
+
+</body>
+
+</html>
